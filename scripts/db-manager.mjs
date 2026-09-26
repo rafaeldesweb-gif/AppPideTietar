@@ -1,7 +1,25 @@
 import mysql from "mysql2/promise";
-import Database from "better-sqlite3";
 import bcrypt from "bcryptjs";
 import dotenv from "dotenv";
+
+// better-sqlite3 is optional (native C++ module; may fail to compile on some systems).
+let Database = null;
+try {
+  const m = await import("better-sqlite3");
+  Database = m.default;
+} catch (_e) {
+  // SQLite unavailable — MySQL must be configured via .env
+}
+
+function getSqliteOrThrow(dbPath) {
+  if (!Database) {
+    throw new Error(
+      "SQLite is not available (better-sqlite3 failed to load).\n" +
+        "Configure MySQL via MYSQL_HOST / MYSQL_USER / MYSQL_DATABASE in your .env file.",
+    );
+  }
+  return new Database(dbPath || process.env.DB_PATH || "./data/app.db");
+}
 
 dotenv.config();
 

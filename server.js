@@ -3,8 +3,19 @@ import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "node:url";
 import mysql from "mysql2/promise";
-import Database from "better-sqlite3";
 import dotenv from "dotenv";
+
+// better-sqlite3 is optional (native module, may fail to compile on some systems).
+// The server will work fine with MySQL. SQLite fallback requires the compiled binary.
+let Database = null;
+try {
+  const sqlite3Module = await import("better-sqlite3");
+  Database = sqlite3Module.default;
+} catch (_e) {
+  console.warn(
+    "better-sqlite3 not available — SQLite fallback disabled. MySQL is required.",
+  );
+}
 import bcrypt from "bcryptjs";
 
 dotenv.config();
@@ -245,6 +256,11 @@ async function applyMysqlSchema(pool) {
 }
 
 function getSqliteDb() {
+  if (!Database) {
+    throw new Error(
+      "SQLite is not available (better-sqlite3 failed to load). Configure MySQL via environment variables.",
+    );
+  }
   if (!sqliteDb) {
     sqliteDb = new Database(DB_PATH);
     sqliteDb.pragma("journal_mode = WAL");
